@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markov Weather Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1f2436;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #eef0f7;
+    --muted: #7a7f96;
+    --sunny: #f5a623;
+    --rainy: #4a9eff;
+    --cloudy: #9b9fc8;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; }
+  body { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* --- HEADER --- */
+  .header { text-align: center; padding: 3rem 0 2.5rem; position: relative; }
+  .header::before {
+    content: '';
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 360px; height: 180px;
+    background: radial-gradient(ellipse at center, rgba(74,158,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header h1 { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .header h1 span { color: var(--rainy); }
+  .header p { margin-top: 0.6rem; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .weather-icons { font-size: 2rem; margin-bottom: 1rem; display: flex; justify-content: center; gap: 0.6rem; animation: float 3s ease-in-out infinite alternate; }
+  @keyframes float { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+  /* --- TABS --- */
+  .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; background: var(--surface); border-radius: 10px; padding: 4px; border: 0.5px solid var(--border); }
+  .tab { flex: 1; padding: 9px 6px; font-size: 0.78rem; cursor: pointer; border: none; background: none; color: var(--muted); font-family: var(--font-mono); font-weight: 500; border-radius: 7px; transition: all 0.18s; }
+  .tab.active { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* --- PANELS --- */
+  .panel { display: none; } .panel.active { display: block; animation: fadein 0.2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* --- CARDS --- */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.4rem; margin-bottom: 1rem; }
+  .card-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+
+  /* --- STATE BUTTONS --- */
+  .state-btns { display: flex; gap: 8px; margin-bottom: 1.2rem; }
+  .state-btn {
+    flex: 1; padding: 12px 8px; border: 0.5px solid var(--border);
+    border-radius: 10px; background: var(--surface2); cursor: pointer;
+    font-size: 0.82rem; color: var(--muted); font-family: var(--font-mono);
+    transition: all 0.15s; text-align: center;
+  }
+  .state-btn .ico { font-size: 1.5rem; display: block; margin-bottom: 5px; }
+  .state-btn:hover { border-color: var(--border2); color: var(--text); }
+  .state-btn.sel-sunny { border-color: var(--sunny); color: var(--sunny); background: rgba(245,166,35,0.08); }
+  .state-btn.sel-rainy { border-color: var(--rainy); color: var(--rainy); background: rgba(74,158,255,0.08); }
+  .state-btn.sel-cloudy { border-color: var(--cloudy); color: var(--cloudy); background: rgba(155,159,200,0.08); }
+
+  /* --- SLIDER ROW --- */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .slider-row label { font-size: 0.78rem; color: var(--muted); min-width: 120px; }
+  .slider-row input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 4px;
+    background: var(--border2); border-radius: 2px; outline: none;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--rainy); cursor: pointer; border: 2px solid var(--bg);
+  }
+  .slider-row .val { font-size: 0.82rem; font-weight: 500; min-width: 36px; text-align: right; color: var(--text); }
+
+  /* --- RUN BUTTON --- */
+  .run-btn {
+    width: 100%; padding: 11px; font-size: 0.82rem;
+    border: 0.5px solid var(--border2); border-radius: 9px;
+    background: rgba(74,158,255,0.1); cursor: pointer; font-weight: 600;
+    font-family: var(--font-mono); color: var(--rainy);
+    letter-spacing: 0.05em; transition: all 0.15s;
+  }
+  .run-btn:hover { background: rgba(74,158,255,0.18); border-color: var(--rainy); }
+  .run-btn:active { transform: scale(0.98); }
+
+  /* --- RESULT CARD --- */
+  .result-card { background: var(--surface2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.2rem; margin-top: 1rem; }
+  .result-title { font-size: 0.75rem; color: var(--muted); margin-bottom: 14px; }
+
+  /* --- PROBABILITY BARS --- */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-ico { font-size: 1.1rem; width: 24px; text-align: center; }
+  .bar-name { font-size: 0.78rem; width: 54px; color: var(--muted); }
+  .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .bar-pct { font-size: 0.8rem; font-weight: 500; min-width: 42px; text-align: right; }
+
+  /* --- WINNER BADGE --- */
+  .winner { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 9px 12px; background: var(--surface); border-radius: 8px; border: 0.5px solid var(--border); }
+  .winner span { font-size: 0.75rem; color: var(--muted); }
+  .winner strong { font-size: 0.85rem; }
+
+  /* --- PROGRESSION TABLE --- */
+  .prog-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 10px; }
+  .prog-table th { text-align: left; color: var(--muted); font-weight: 400; padding: 7px 10px; border-bottom: 0.5px solid var(--border); }
+  .prog-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  .prog-table tr:last-child td { border-bottom: none; }
+  .prog-table tr:hover td { background: var(--surface2); }
+
+  /* --- SIM CHIPS --- */
+  .seq-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .day-chip { padding: 4px 9px; border-radius: 20px; font-size: 0.72rem; background: var(--surface); border: 0.5px solid var(--border); color: var(--muted); }
+  .day-chip .dnum { font-size: 0.65rem; color: var(--muted); }
+
+  /* --- STAT BOXES --- */
+  .sim-stat { display: flex; gap: 10px; margin-top: 12px; }
+  .stat-box { flex: 1; background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 10px; text-align: center; }
+  .stat-box .s-ico { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+  .stat-box .s-pct { font-size: 1.1rem; font-weight: 600; }
+  .stat-box .s-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+
+  /* --- MATRIX --- */
+  .matrix-grid { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 5px; margin-top: 10px; }
+  .mcell { padding: 10px 6px; border-radius: 8px; text-align: center; font-size: 0.8rem; font-weight: 500; }
+  .mcell.head { font-size: 0.7rem; color: var(--muted); font-weight: 400; display: flex; align-items: center; justify-content: center; }
+  .mcell.from { font-size: 0.7rem; color: var(--muted); font-weight: 400; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+  .matrix-note { font-size: 0.7rem; color: var(--muted); margin-top: 10px; }
+
+  /* --- STEADY STATE --- */
+  .pi-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .verify { margin-top: 14px; padding: 10px 14px; border-radius: 8px; border: 0.5px solid var(--border); font-size: 0.78rem; background: var(--surface2); }
+
+  /* --- FOOTER --- */
+  .footer { text-align: center; margin-top: 3rem; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="weather-icons">☀️ 🌧️ ⛅</div>
+  <h1>Markov <span>Weather</span> Predictor</h1>
+  <p>Linear Algebra Group Project &nbsp;·&nbsp; States: Sunny · Rainy · Cloudy</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('predict',this)">🔮 Predict</button>
+  <button class="tab" onclick="switchTab('simulate',this)">🎲 Simulate</button>
+  <button class="tab" onclick="switchTab('matrix',this)">🧮 Matrix</button>
+  <button class="tab" onclick="switchTab('steady',this)">📊 Steady State</button>
+</div>
+
+<!-- PREDICT -->
+<div id="predict" class="panel active">
+  <div class="card">
+    <div class="card-label">Today's weather</div>
+    <div class="state-btns">
+      <button class="state-btn sel-sunny" onclick="selState(this,'predict')" data-val="Sunny"><span class="ico">☀️</span>Sunny</button>
+      <button class="state-btn" onclick="selState(this,'predict')" data-val="Rainy"><span class="ico">🌧️</span>Rainy</button>
+      <button class="state-btn" onclick="selState(this,'predict')" data-val="Cloudy"><span class="ico">⛅</span>Cloudy</button>
+    </div>
+    <div class="slider-row">
+      <label>Days ahead</label>
+      <input type="range" min="1" max="30" value="3" id="ndays" step="1" oninput="document.getElementById('ndaysv').textContent=this.value">
+      <span class="val" id="ndaysv">3</span>
+    </div>
+    <button class="run-btn" onclick="runPredict()">▶ Run Prediction</button>
+  </div>
+  <div id="predict-out"></div>
+</div>
+
+<!-- SIMULATE -->
+<div id="simulate" class="panel">
+  <div class="card">
+    <div class="card-label">Starting weather</div>
+    <div class="state-btns">
+      <button class="state-btn sel-sunny" onclick="selState(this,'simulate')" data-val="Sunny"><span class="ico">☀️</span>Sunny</button>
+      <button class="state-btn" onclick="selState(this,'simulate')" data-val="Rainy"><span class="ico">🌧️</span>Rainy</button>
+      <button class="state-btn" onclick="selState(this,'simulate')" data-val="Cloudy"><span class="ico">⛅</span>Cloudy</button>
+    </div>
+    <div class="slider-row">
+      <label>Days to simulate</label>
+      <input type="range" min="1" max="60" value="14" id="simdays" step="1" oninput="document.getElementById('simdaysv').textContent=this.value">
+      <span class="val" id="simdaysv">14</span>
+    </div>
+    <div class="slider-row">
+      <label>Random seed</label>
+      <input type="range" min="0" max="99" value="42" id="seed" step="1" oninput="document.getElementById('seedv').textContent=this.value">
+      <span class="val" id="seedv">42</span>
+    </div>
+    <button class="run-btn" onclick="runSimulate()">▶ Run Simulation</button>
+  </div>
+  <div id="simulate-out"></div>
+</div>
+
+<!-- MATRIX -->
+<div id="matrix" class="panel">
+  <div class="card" id="matrix-card"></div>
+</div>
+
+<!-- STEADY STATE -->
+<div id="steady" class="panel">
+  <div class="card" id="steady-card"></div>
+</div>
+
+<div class="footer">Markov Chain · Linear Algebra Group Project · 3-State Weather Model</div>
+
+<script>
+const STATES = ["Sunny","Rainy","Cloudy"];
+const ICONS  = {Sunny:"☀️", Rainy:"🌧️", Cloudy:"⛅"};
+const COLORS = {Sunny:"#f5a623", Rainy:"#4a9eff", Cloudy:"#9b9fc8"};
+const SELCLS = {Sunny:"sel-sunny", Rainy:"sel-rainy", Cloudy:"sel-cloudy"};
+const P = [[0.60,0.20,0.20],[0.30,0.40,0.30],[0.30,0.30,0.40]];
+
+const predictState = {val:"Sunny"};
+const simState     = {val:"Sunny"};
+
+function selState(btn, ctx) {
+  const grp = btn.parentElement;
+  grp.querySelectorAll('.state-btn').forEach(b => {
+    b.className = 'state-btn';
+  });
+  btn.classList.add(SELCLS[btn.dataset.val]);
+  if (ctx === 'predict') predictState.val = btn.dataset.val;
+  else simState.val = btn.dataset.val;
+}
+
+function matMul(A, B) {
+  const n = A.length, R = Array.from({length:n},()=>Array(n).fill(0));
+  for (let i=0;i<n;i++) for (let k=0;k<n;k++) for (let j=0;j<n;j++) R[i][j]+=A[i][k]*B[k][j];
+  return R;
+}
+
+function matPow(M, n) {
+  let R = [[1,0,0],[0,1,0],[0,0,1]], base = M.map(r=>[...r]);
+  while (n > 0) { if (n%2===1) R=matMul(R,base); base=matMul(base,base); n=Math.floor(n/2); }
+  return R;
+}
+
+function predictNDays(start, n) {
+  const idx = STATES.indexOf(start);
+  return matPow(P, n)[idx];
+}
+
+function barHTML(probs, title) {
+  const best = STATES[probs.indexOf(Math.max(...probs))];
+  let h = `<div class="result-card"><div class="result-title">${title}</div>`;
+  STATES.forEach((s,i) => {
+    const pct = (probs[i]*100).toFixed(1);
+    h += `<div class="bar-row">
+      <span class="bar-ico">${ICONS[s]}</span>
+      <span class="bar-name">${s}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[s]}"></div></div>
+      <span class="bar-pct" style="color:${COLORS[s]}">${pct}%</span>
+    </div>`;
+  });
+  h += `<div class="winner">${ICONS[best]} <span>Most likely →</span> <strong style="color:${COLORS[best]}">${best}</strong></div></div>`;
+  return h;
+}
+
+function runPredict() {
+  const start = predictState.val, n = parseInt(document.getElementById('ndays').value);
+  let html = barHTML(predictNDays(start, n), `Forecast for Day +${n} &nbsp;|&nbsp; Starting: ${ICONS[start]} ${start}`);
+
+  const limit = Math.min(n, 12);
+  html += `<div class="card" style="margin-top:0"><div class="card-label">Day-by-day progression</div>
+    <table class="prog-table">
+      <thead><tr><th>Day</th><th>☀️ Sunny</th><th>🌧️ Rainy</th><th>⛅ Cloudy</th><th>Top</th></tr></thead><tbody>`;
+  for (let d=1; d<=limit; d++) {
+    const p = predictNDays(start, d);
+    const best = STATES[p.indexOf(Math.max(...p))];
+    html += `<tr><td><strong>D${d}</strong></td><td style="color:${COLORS.Sunny}">${(p[0]*100).toFixed(1)}%</td><td style="color:${COLORS.Rainy}">${(p[1]*100).toFixed(1)}%</td><td style="color:${COLORS.Cloudy}">${(p[2]*100).toFixed(1)}%</td><td>${ICONS[best]} ${best}</td></tr>`;
+  }
+  if (n > 12) {
+    const p = predictNDays(start, n);
+    const best = STATES[p.indexOf(Math.max(...p))];
+    html += `<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:0.7rem">···</td></tr>`;
+    html += `<tr><td><strong>D${n}</strong></td><td style="color:${COLORS.Sunny}">${(p[0]*100).toFixed(1)}%</td><td style="color:${COLORS.Rainy}">${(p[1]*100).toFixed(1)}%</td><td style="color:${COLORS.Cloudy}">${(p[2]*100).toFixed(1)}%</td><td>${ICONS[best]} ${best}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('predict-out').innerHTML = html;
+}
+
+function seededRNG(seed) {
+  let s = seed;
+  return () => { s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
+}
+
+function simWeather(start, days, seed) {
+  const rng = seededRNG(seed), seq = [start]; let cur = start;
+  for (let i=1; i<days; i++) {
+    const row = P[STATES.indexOf(cur)], r = rng(); let acc=0, next=STATES[2];
+    for (let j=0; j<3; j++) { acc+=row[j]; if(r<acc){next=STATES[j];break;} }
+    cur = next; seq.push(cur);
+  }
+  return seq;
+}
+
+function runSimulate() {
+  const start = simState.val;
+  const days  = parseInt(document.getElementById('simdays').value);
+  const seed  = parseInt(document.getElementById('seed').value);
+  const seq   = simWeather(start, days, seed);
+  const counts = {Sunny:0, Rainy:0, Cloudy:0};
+  seq.forEach(s => counts[s]++);
+
+  let html = `<div class="result-card"><div class="result-title">📅 ${days}-day sequence &nbsp;|&nbsp; Start: ${ICONS[start]} ${start} &nbsp;|&nbsp; Seed: ${seed}</div>`;
+  html += `<div class="seq-wrap">`;
+  seq.forEach((s,i) => {
+    html += `<div class="day-chip" style="border-color:${COLORS[s]}44;color:${COLORS[s]}">${ICONS[s]} <span class="dnum">D${i+1}</span></div>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="sim-stat">`;
+  STATES.forEach(s => {
+    const pct = (counts[s]/days*100).toFixed(1);
+    html += `<div class="stat-box"><span class="s-ico">${ICONS[s]}</span><div class="s-pct" style="color:${COLORS[s]}">${pct}%</div><div class="s-lbl">${s}<br>${counts[s]} days</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById('simulate-out').innerHTML = html;
+}
+
+function buildMatrix() {
+  let h = `<div class="card-label">Transition matrix P &nbsp;·&nbsp; Row = current, Column = next</div>`;
+  h += `<div class="matrix-grid">`;
+  h += `<div class="mcell head"></div>`;
+  STATES.forEach(s => { h += `<div class="mcell head">${ICONS[s]} ${s}</div>`; });
+  STATES.forEach((rs,i) => {
+    h += `<div class="mcell from">${ICONS[rs]} ${rs}</div>`;
+    STATES.forEach((_,j) => {
+      const v = P[i][j];
+      const [r,g,b] = COLORS[STATES[j]].replace('#','').match(/../g).map(x=>parseInt(x,16));
+      h += `<div class="mcell" style="background:rgba(${r},${g},${b},${(v*0.55).toFixed(2)});color:var(--text)">${(v*100).toFixed(0)}%</div>`;
+    });
+  });
+  h += `</div><div class="matrix-note">Each row sums to 100% &nbsp;·&nbsp; Darker = higher transition probability</div>`;
+  document.getElementById('matrix-card').innerHTML = h;
+}
+
+function steadyState() {
+  let pi = [1/3, 1/3, 1/3];
+  for (let iter=0; iter<2000; iter++) {
+    const next=[0,0,0];
+    for (let j=0;j<3;j++) for (let i=0;i<3;i++) next[j]+=pi[i]*P[i][j];
+    pi = next;
+  }
+  return pi;
+}
+
+function buildSteady() {
+  const pi = steadyState();
+  const ok = pi.every((v,j) => { const res=pi.reduce((a,x,i)=>a+x*P[i][j],0); return Math.abs(res-v)<1e-8; });
+  let h = `<div class="card-label">Long-run steady state distribution (π)</div>`;
+  h += `<p style="font-size:0.75rem;color:var(--muted);margin:6px 0 16px">Converges here regardless of starting state</p>`;
+  STATES.forEach((s,i) => {
+    const pct = (pi[i]*100).toFixed(1);
+    h += `<div class="pi-row">
+      <span style="font-size:1.1rem;width:24px;text-align:center">${ICONS[s]}</span>
+      <span style="font-size:0.78rem;width:54px;color:var(--muted)">${s}</span>
+      <div class="bar-track" style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${COLORS[s]};border-radius:4px;transition:width 0.5s"></div>
+      </div>
+      <span style="font-size:0.8rem;font-weight:500;min-width:42px;text-align:right;color:${COLORS[s]}">${pct}%</span>
+    </div>`;
+  });
+  const vc = ok ? '#3db57a' : '#ff5b5b';
+  h += `<div class="verify" style="color:${vc}">${ok?'✅':'❌'} Verification π @ P = π : ${ok?'PASSED':'FAILED'}</div>`;
+  document.getElementById('steady-card').innerHTML = h;
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+buildMatrix();
+buildSteady();
+</script>
+</body>
+</html>
