@@ -4,17 +4,12 @@
 #   States: Sunny, Rainy, Cloudy
 # ============================================================
 #
-# TEAM DIVISION OF WORK:
-#   Member 1 --> Transition Matrix + State Encoding  (Section 1 & 2)
-#   Member 2 --> One-step & Multi-step Prediction    (Section 3)
-#   Member 3 --> Steady-State Distribution           (Section 4)
-#   Member 4 --> Simulation + Display                (Section 5 & 6)
-# ============================================================
+
 
 import numpy as np
 
 # -------------------------------------------------------
-# SECTION 1 -- TRANSITION MATRIX  (Member 1)
+# SECTION 1 -- TRANSITION MATRIX  
 # -------------------------------------------------------
 STATES = ["Sunny", "Rainy", "Cloudy"]
 
@@ -32,7 +27,7 @@ def validate_transition_matrix(matrix):
 validate_transition_matrix(P)
 
 # -------------------------------------------------------
-# SECTION 2 -- STATE ENCODING  (Member 1)
+# SECTION 2 -- STATE ENCODING  
 # -------------------------------------------------------
 def encode_state(name):
     vec = np.zeros(len(STATES))
@@ -43,7 +38,7 @@ def decode_state(vec):
     return STATES[int(np.argmax(vec))]
 
 # -------------------------------------------------------
-# SECTION 3 -- PREDICTION  (Member 2)
+# SECTION 3 -- PREDICTION  
 # -------------------------------------------------------
 def predict_n_days(state_name, n):
     """
@@ -65,7 +60,7 @@ def show_probabilities(label, probs):
     print("  Most likely: {}".format(decode_state(probs)))
 
 # -------------------------------------------------------
-# SECTION 4 -- STEADY STATE  (Member 3)
+# SECTION 4 -- STEADY STATE  
 # -------------------------------------------------------
 def steady_state_eigenvalue():
     """
@@ -81,7 +76,7 @@ def steady_state_eigenvalue():
 STEADY = steady_state_eigenvalue()
 
 # -------------------------------------------------------
-# SECTION 5 -- SIMULATION  (Member 4)
+# SECTION 5 -- SIMULATION  
 # -------------------------------------------------------
 def simulate_weather(start, days, seed=42):
     """
@@ -97,7 +92,7 @@ def simulate_weather(start, days, seed=42):
     return seq
 
 # -------------------------------------------------------
-# SECTION 6 -- DISPLAY HELPERS  (Member 4)
+# SECTION 6 -- DISPLAY HELPERS  
 # -------------------------------------------------------
 SEP = "=" * 50
 
